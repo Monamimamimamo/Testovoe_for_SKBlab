@@ -1,0 +1,39 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 9999
+      ZOOKEEPER_TICK_TIME: 2000
+
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9001:9001"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:9999
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9001
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  auth:
+    image: monamimamimamo/skb_testovoe_auth:1.0
+    depends_on:
+      - kafka
+    ports:
+      - "8008:8008"
+    environment:
+      spring.kafka.bootstrap-servers: kafka:9001
+
+
+
+  external_service:
+    image: monamimamimamo/skb_testovoe_external_service:1.0
+    depends_on:
+      - kafka
+    ports:
+      - "8009:8009"
+    environment:
+      spring.kafka.bootstrap-servers: kafka:9001
