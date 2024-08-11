@@ -16,7 +16,7 @@ public interface AuthService {
      * @param request - форма регистрации.
      * @return возврацает форму, успешность операции, id формы.
      */
-    ResponseEntity<SignupResponse> signup(SignupRequest request);
+    ResponseEntity<SignupForm> signup(SignupRequest request);
 
     /**
      * Получение формы по id.

@@ -8,11 +8,13 @@ import org.example.domain.SignupResponse;
 import org.example.domain.repo.RegisterFormRepo;
 import org.example.kafka.KafkaServiceImpl;
 import org.example.service.interfaces.AuthService;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.persistence.PersistenceException;
 import javax.validation.ConstraintViolationException;
 import java.util.Objects;
 import java.util.Optional;
@@ -27,16 +29,17 @@ public class AuthServiceImpl implements AuthService {
     private final KafkaServiceImpl kafkaService;
 
     @Override
-    public ResponseEntity<SignupResponse> signup(SignupRequest request) {
+    public ResponseEntity<SignupForm> signup(SignupRequest request) {
         try {
             SignupForm registerForm = createAndSaveForm(request);
             log.info("Сохранена форма: {}", registerForm);
             kafkaService.sendMessage(request, "signup-request-topic");
-            return ResponseEntity.ok(new SignupResponse(true, "Ваша форма отправлена, id формы: " + registerForm.getId(), request));
-        } catch (ConstraintViolationException e) {
-            log.error("Ошибка при регистрации: {}", e.getMessage());
-            return new ResponseEntity<>(new SignupResponse(false, "Пользователь с таким адресом электронной почты уже существует.", null), HttpStatus.CONFLICT);
+            return ResponseEntity.ok(registerForm);
         } catch (Exception e) {
+            if (e instanceof DataAccessException) {
+                log.error("Форма с такой почтой уже существует: {}", e.getMessage());
+                return new ResponseEntity<>(HttpStatus.CONFLICT);
+            }
             log.error("Ошибка при регистрации: {}", e.getMessage());
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -73,13 +76,13 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private SignupForm createAndSaveForm(SignupRequest request) {
-            SignupForm registerForm = new SignupForm();
-            registerForm.setEmail(request.getEmail());
-            registerForm.setLogin(request.getLogin());
-            registerForm.setPassword(request.getPassword());
-            registerForm.setFullName(request.getFullName());
-            registerForm.setStatus("waiting");
-            registerFormRepo.save(registerForm);
-            return registerForm;
+        SignupForm registerForm = new SignupForm();
+        registerForm.setEmail(request.getEmail());
+        registerForm.setLogin(request.getLogin());
+        registerForm.setPassword(request.getPassword());
+        registerForm.setFullName(request.getFullName());
+        registerForm.setStatus("waiting");
+        registerFormRepo.save(registerForm);
+        return registerForm;
     }
 }

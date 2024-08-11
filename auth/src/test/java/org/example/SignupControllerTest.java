@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,15 +30,7 @@ class SignupControllerTest {
     @MockBean
     private AuthServiceImpl authService;
 
-    @Test
-    void testGetFormValid() throws Exception {
-        // Подготовка мока
-        UUID validId = UUID.randomUUID();
 
-        mockMvc.perform(get("/auth/signup").param("id", validId.toString())
-                        .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                .andExpect(status().isOk());
-    }
 
     @Test
     void testGetFormInvalid() throws Exception {

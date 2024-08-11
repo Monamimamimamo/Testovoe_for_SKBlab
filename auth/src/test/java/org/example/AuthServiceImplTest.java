@@ -3,16 +3,15 @@ package org.example;
 
 import org.example.domain.SignupForm;
 import org.example.domain.SignupRequest;
-import org.example.domain.SignupResponse;
 import org.example.domain.repo.RegisterFormRepo;
 import org.example.kafka.KafkaServiceImpl;
-import org.example.kafka.interfaces.KafkaService;
 import org.example.service.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -20,8 +19,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class AuthServiceImplTest {
 
@@ -42,13 +41,28 @@ public class AuthServiceImplTest {
 
 
     @Test
+    void testSignupConflictResponse() {
+        SignupRequest request = new SignupRequest();
+        request.setLogin("monamimamimamo");
+        request.setPassword("aA25800");
+        request.setEmail("kirill7195@yandex.ru");
+        request.setFullName("Иванов Иван Иванович");
+        when(registerFormRepo.save(any())).thenAnswer(invocation -> {
+            throw new DataAccessException("Дубликат записи") {};
+        });
+        ResponseEntity<SignupForm> response2 = authService.signup(request);
+        assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+
+    @Test
     void testSignupSuccess() {
-        SignupRequest request = new SignupRequest(); // Инициализируйте объект запроса
-        SignupForm registerForm = new SignupForm(); // Инициализируйте форму регистрации
+        SignupRequest request = new SignupRequest();
+        SignupForm registerForm = new SignupForm();
         registerForm.setId(UUID.randomUUID());
 
 
-        ResponseEntity<SignupResponse> response = authService.signup(request);
+        ResponseEntity<SignupForm> response = authService.signup(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(kafkaService).sendMessage(request, "signup-request-topic");
@@ -115,18 +129,15 @@ public class AuthServiceImplTest {
         SignupForm updatedForm = registerFormRepo.findByEmail(email).orElseThrow(() -> new RuntimeException("Форма не найдена после первого изменения статуса"));
         assertThat(updatedForm.getStatus()).isEqualTo("accepted");
 
-        // Во второй части теста мы ожидаем, что метод changeFormStatus выбросит исключение,
-        // но мы хотим, чтобы тест продолжил выполнение. Для этого используем try-catch.
         try {
-            authService.changeFormStatus(!successfully, email); // Попытка изменить статус снова
+            authService.changeFormStatus(!successfully, email);
         } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage()); // Например, можно просто вывести сообщение об ошибке
+            System.out.println(e.getMessage());
         }
-
-        // После обработки исключения мы проверяем, что статус формы остался неизменным
         updatedForm = registerFormRepo.findByEmail(email).orElseThrow(() -> new RuntimeException("Форма не найдена после второго изменения статуса"));
         assertThat(updatedForm.getStatus()).isEqualTo("accepted");
     }
+
 
 
 

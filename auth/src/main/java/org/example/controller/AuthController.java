@@ -22,7 +22,7 @@ public class AuthController {
     private final AuthServiceImpl authService;
 
     @PostMapping("/signup")
-    public ResponseEntity<SignupResponse> signup(@RequestBody @Valid SignupRequest request){
+    public ResponseEntity<SignupForm> signup(@RequestBody @Valid SignupRequest request){
         log.info("Принята форма: " + request);
         return authService.signup(request);
     }
